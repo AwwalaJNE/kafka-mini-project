@@ -16,9 +16,7 @@ const produce = async (data) => {
       messages: [
         { 
           key: data.connote_number,
-          value: JSON.stringify({
-            payload: data
-          }) 
+          value: JSON.stringify({ data }) 
         }
       ],
     });
