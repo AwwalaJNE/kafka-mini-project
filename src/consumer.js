@@ -18,7 +18,7 @@ const consume = async () => {
         value: message.value.toString()
       })
 
-      const payload = JSON.parse(message.value.toString());
+      const payload = JSON.parse(message.value.toString()).data;
       const webhookUrls = await getWebhookUrlsFromDatabase();
 
       await Promise.all(webhookUrls.map(async (webhookUrl) => {
