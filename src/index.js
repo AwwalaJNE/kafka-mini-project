@@ -1,24 +1,30 @@
-const express = require('express');
-const bodyParser = require('body-parser');
+const { Client } = require("pg");
+const PgListen = require("pg-listen");
+const consume = require("./consumer");
+const produce = require("./producer");
+const dbConfig = require('./dbconfig')
 
-const app = express();
-const port = 3000;
+const connectionString = `postgres://${dbConfig.user}:${dbConfig.password}@${dbConfig.host}/${dbConfig.database}`;
 
-app.use(bodyParser.json());
+const pgClient = new Client({ connectionString });
+const pgListen = new PgListen({ connectionString });
 
-app.post('/', (req, res) => {
-  console.log('Received POST request with payload:', req.body);
-  res.status(200).send('OK');
-});
+const listener = async () => {
+  await pgClient.connect();
+  await pgListen.connect();
+  await pgListen.listenTo("kafka_channel");
 
-app.post('/webhook', async (req, res) => {
-  console.log('Webhook body:', req.body);
-  // console.log('Webhook headers:', req.headers);
-  // console.log('Webhook url:', req.headers.host);
+  pgListen.notifications.on("kafka_channel", async (payload) => {
+    try {
+      await produce(payload);
+    } catch (error) {
+      console.error("Error sending message to Kafka:", error);
+    }
+  });
 
-  res.status(200).send(req.headers);
-});
+  consume();
 
-app.listen(port, () => {
-  console.log(`Webhook server is running at http://localhost:${port}`);
-});
+  console.log("Listening for PostgreSQL notifications...");
+};
+
+listener().catch((error) => console.error("Error starting application:", error));
